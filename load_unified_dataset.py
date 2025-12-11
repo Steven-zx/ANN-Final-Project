@@ -52,30 +52,56 @@ class UnifiedDatasetLoader:
         
         return combined
     
+    def load_english_cyberbullying_dataset(self):
+        """Load the English cyberbullying tweets dataset and convert to binary labels"""
+        df = pd.read_csv(os.path.join(self.base_path, 'cyberbullying_tweets.csv'))
+        
+        # Rename columns to match our format
+        df = df.rename(columns={'tweet_text': 'text', 'cyberbullying_type': 'original_label'})
+        
+        # Convert multi-class to binary: not_cyberbullying=0, everything else=1
+        df['label'] = (df['original_label'] != 'not_cyberbullying').astype(int)
+        df['source'] = 'english_twitter'
+        
+        # Keep only text, label, and source columns
+        df = df[['text', 'label', 'source']]
+        
+        print(f"✓ Loaded English cyberbullying dataset: {len(df)} samples")
+        print(f"  - Cyberbullying: {df['label'].sum()}")
+        print(f"  - Non-cyberbullying: {len(df) - df['label'].sum()}")
+        
+        return df
+    
     def load_all_datasets(self):
-        """Load and combine all Filipino datasets"""
+        """Load and combine all Filipino and English datasets"""
         print("=" * 60)
-        print("LOADING ALL FILIPINO HATE SPEECH DATASETS")
+        print("LOADING ALL HATE SPEECH/CYBERBULLYING DATASETS")
         print("=" * 60)
         
         # Load individual datasets
         hatespeech_df = self.load_hatespeech_dataset()
         tiktok_df = self.load_tiktok_dataset()
+        english_df = self.load_english_cyberbullying_dataset()
         
         # Combine all datasets
-        self.combined_data = pd.concat([hatespeech_df, tiktok_df], ignore_index=True)
+        self.combined_data = pd.concat([hatespeech_df, tiktok_df, english_df], ignore_index=True)
         
         # Clean the data
         self.combined_data = self._clean_data(self.combined_data)
         
         print("\n" + "=" * 60)
-        print("UNIFIED DATASET STATISTICS")
+        print("UNIFIED BILINGUAL DATASET STATISTICS")
         print("=" * 60)
         print(f"Total samples: {len(self.combined_data)}")
-        print(f"Hate speech samples: {self.combined_data['label'].sum()} ({self.combined_data['label'].mean()*100:.2f}%)")
+        print(f"Hate/Cyberbullying samples: {self.combined_data['label'].sum()} ({self.combined_data['label'].mean()*100:.2f}%)")
         print(f"Non-hate samples: {len(self.combined_data) - self.combined_data['label'].sum()} ({(1-self.combined_data['label'].mean())*100:.2f}%)")
         print(f"\nDataset sources:")
         print(self.combined_data['source'].value_counts())
+        print(f"\nLanguage distribution:")
+        filipino_count = len(self.combined_data[self.combined_data['source'].isin(['twitter_election', 'tiktok'])])
+        english_count = len(self.combined_data[self.combined_data['source'] == 'english_twitter'])
+        print(f"  Filipino: {filipino_count} samples ({filipino_count/len(self.combined_data)*100:.1f}%)")
+        print(f"  English: {english_count} samples ({english_count/len(self.combined_data)*100:.1f}%)")
         print("=" * 60)
         
         return self.combined_data
@@ -136,18 +162,18 @@ class UnifiedDatasetLoader:
         
         return (X_train, y_train), (X_val, y_val), (X_test, y_test)
     
-    def save_unified_dataset(self, output_path='unified_filipino_hatespeech.csv'):
+    def save_unified_dataset(self, output_path='unified_bilingual_hatespeech.csv'):
         """Save the unified dataset to a CSV file"""
         if self.combined_data is None:
             raise ValueError("No data loaded. Call load_all_datasets() first.")
         
         self.combined_data.to_csv(output_path, index=False)
-        print(f"\n✓ Unified dataset saved to: {output_path}")
+        print(f"\n✓ Unified bilingual dataset saved to: {output_path}")
         return output_path
 
 
 def main():
-    """Demo: Load and display unified dataset statistics"""
+    """Demo: Load and display unified bilingual dataset statistics"""
     loader = UnifiedDatasetLoader()
     
     # Load all datasets
@@ -161,15 +187,15 @@ def main():
     
     # Show sample texts
     print("\n" + "=" * 60)
-    print("SAMPLE TEXTS FROM UNIFIED DATASET")
+    print("SAMPLE TEXTS FROM UNIFIED BILINGUAL DATASET")
     print("=" * 60)
-    print("\nHate Speech Examples:")
-    hate_samples = unified_data[unified_data['label'] == 1].sample(3)
+    print("\nHate Speech/Cyberbullying Examples:")
+    hate_samples = unified_data[unified_data['label'] == 1].sample(min(5, len(unified_data[unified_data['label'] == 1])))
     for idx, row in hate_samples.iterrows():
         print(f"  [{row['source']}] {row['text'][:100]}...")
     
     print("\nNon-Hate Examples:")
-    non_hate_samples = unified_data[unified_data['label'] == 0].sample(3)
+    non_hate_samples = unified_data[unified_data['label'] == 0].sample(min(5, len(unified_data[unified_data['label'] == 0])))
     for idx, row in non_hate_samples.iterrows():
         print(f"  [{row['source']}] {row['text'][:100]}...")
     print("=" * 60)
