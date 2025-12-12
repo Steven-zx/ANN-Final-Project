@@ -13,9 +13,36 @@ from text_preprocessing import TextPreprocessor, Vocabulary, pad_sequences
 class SocialMediaApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Social Media - Hate Speech Protected")
-        self.root.geometry("800x700")
-        self.root.configure(bg='#F0F2F5')
+        self.root.title("HateShield - AI-Protected Social Network")
+        self.root.geometry("900x750")
+        
+        # Modern color palette
+        self.colors = {
+            'bg_primary': '#FAFBFC',      # Soft off-white background
+            'bg_secondary': '#FFFFFF',     # Pure white for cards
+            'accent_primary': '#5B7FFF',   # Modern blue accent
+            'accent_hover': '#4A6DE5',     # Darker blue for hover
+            'accent_light': '#E8EEFF',     # Light blue for subtle highlights
+            'text_primary': '#1A1D29',     # Almost black for primary text
+            'text_secondary': '#6B7280',   # Gray for secondary text
+            'text_muted': '#9CA3AF',       # Light gray for muted text
+            'border': '#E5E7EB',           # Light border color
+            'success': '#10B981',          # Green for success
+            'danger': '#EF4444',           # Red for danger/warnings
+            'warning': '#F59E0B',          # Orange for warnings
+            'shadow': '#D1D5DB',           # Subtle gray shadow
+        }
+        
+        # Modern typography
+        self.fonts = {
+            'heading': ('Inter', 20, 'bold'),
+            'subheading': ('Inter', 14, 'bold'),
+            'body': ('Inter', 11),
+            'small': ('Inter', 9),
+            'button': ('Inter', 11, 'bold'),
+        }
+        
+        self.root.configure(bg=self.colors['bg_primary'])
         
         # Load model
         self.device = torch.device('cpu')
@@ -108,22 +135,37 @@ class SocialMediaApp:
         # Feed container
         feed_container = tk.Frame(self.root, bg='#F0F2F5')
         feed_container.pack(fill='both', expand=True, padx=20, pady=(0, 20))
-        
+
         # Canvas with scrollbar
-        canvas = tk.Canvas(feed_container, bg='#F0F2F5', highlightthickness=0)
-        scrollbar = ttk.Scrollbar(feed_container, orient='vertical', command=canvas.yview)
-        
-        self.feed_frame = tk.Frame(canvas, bg='#F0F2F5')
-        
+        self.feed_canvas = tk.Canvas(feed_container, bg='#F0F2F5', highlightthickness=0)
+        scrollbar = ttk.Scrollbar(feed_container, orient='vertical', command=self.feed_canvas.yview)
+
+        # The outer frame defines scrollregion height; inner column is centered
+        self.feed_frame = tk.Frame(self.feed_canvas, bg='#F0F2F5')
         self.feed_frame.bind(
             '<Configure>',
-            lambda e: canvas.configure(scrollregion=canvas.bbox('all'))
+            lambda e: self.feed_canvas.configure(scrollregion=self.feed_canvas.bbox('all'))
         )
-        
-        canvas.create_window((0, 0), window=self.feed_frame, anchor='nw')
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        canvas.pack(side='left', fill='both', expand=True)
+
+        # Centered content column (fixed width) for cards
+        self.feed_column_width = 650
+        self.feed_column = tk.Frame(self.feed_frame, bg='#F0F2F5')
+        self.feed_column.pack(pady=10, anchor='center')
+
+        self._feed_window_id = self.feed_canvas.create_window((0, 0), window=self.feed_frame, anchor='n')
+        self.feed_canvas.configure(yscrollcommand=scrollbar.set)
+
+        def _center_feed_column(event=None):
+            try:
+                canvas_width = self.feed_canvas.winfo_width()
+                x = max(0, (canvas_width - self.feed_column_width) // 2)
+                self.feed_canvas.coords(self._feed_window_id, x, 0)
+            except Exception:
+                pass
+
+        self.feed_canvas.bind('<Configure>', _center_feed_column)
+
+        self.feed_canvas.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
         
         # Welcome message
@@ -131,8 +173,13 @@ class SocialMediaApp:
         
     def show_welcome_message(self):
         """Show welcome message when no posts"""
-        welcome_frame = tk.Frame(self.feed_frame, bg='white', relief='solid', borderwidth=1)
-        welcome_frame.pack(fill='x', pady=5)
+        # Clear existing cards/messages in the feed column
+        for child in self.feed_column.winfo_children():
+            child.destroy()
+
+        # Welcome card (packs into centered column)
+        welcome_frame = tk.Frame(self.feed_column, bg='white', relief='solid', borderwidth=1)
+        welcome_frame.pack(fill='x', pady=10)
         
         welcome_text = tk.Label(
             welcome_frame,
@@ -141,16 +188,18 @@ class SocialMediaApp:
             bg='white',
             fg='#65676B',
             justify='center',
-            pady=30
+            pady=30,
+            padx=40,
+            wraplength=550
         )
         welcome_text.pack()
         
     def open_create_post_dialog(self):
-        """Open create post dialog (Facebook-style)"""
+        """Open modern create post dialog"""
         dialog = tk.Toplevel(self.root)
-        dialog.title("Create post")
-        dialog.geometry("450x380")
-        dialog.configure(bg='white')
+        dialog.title("Create Post")
+        dialog.geometry("500x400")
+        dialog.configure(bg=self.colors['bg_secondary'])
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -161,67 +210,76 @@ class SocialMediaApp:
         y = (dialog.winfo_screenheight() // 2) - (dialog.winfo_height() // 2)
         dialog.geometry(f"+{x}+{y}")
         
-        # Header
-        header_frame = tk.Frame(dialog, bg='white')
-        header_frame.pack(fill='x')
+        # Header with close button
+        header_frame = tk.Frame(dialog, bg=self.colors['bg_secondary'])
+        header_frame.pack(fill='x', padx=20, pady=(20, 10))
         
         title = tk.Label(
             header_frame,
-            text="Create post",
-            font=('Segoe UI', 14, 'bold'),
-            bg='white'
+            text="Create Post",
+            font=self.fonts['heading'],
+            bg=self.colors['bg_secondary'],
+            fg=self.colors['text_primary']
         )
-        title.pack(pady=10)
+        title.pack(side='left')
         
-        # Separator
-        separator = tk.Frame(dialog, height=1, bg='#CED0D4')
-        separator.pack(fill='x')
+        # Thin separator
+        separator = tk.Frame(dialog, height=1, bg=self.colors['border'])
+        separator.pack(fill='x', padx=20)
         
         # User info
-        user_frame = tk.Frame(dialog, bg='white')
-        user_frame.pack(fill='x', pady=10, padx=15)
+        user_frame = tk.Frame(dialog, bg=self.colors['bg_secondary'])
+        user_frame.pack(fill='x', pady=16, padx=20)
         
-        user_icon = tk.Label(
+        # Profile circle
+        profile_bg = tk.Label(
             user_frame,
             text="👤",
-            font=('Segoe UI', 16),
-            bg='white'
+            font=('Inter', 16),
+            bg=self.colors['accent_light'],
+            fg=self.colors['accent_primary'],
+            width=2,
+            height=1
         )
-        user_icon.pack(side='left', padx=(0, 8))
+        profile_bg.pack(side='left', padx=(0, 12))
         
-        user_info = tk.Frame(user_frame, bg='white')
+        user_info = tk.Frame(user_frame, bg=self.colors['bg_secondary'])
         user_info.pack(side='left')
         
         username = tk.Label(
             user_info,
             text="User",
-            font=('Segoe UI', 10, 'bold'),
-            bg='white'
+            font=self.fonts['subheading'],
+            bg=self.colors['bg_secondary'],
+            fg=self.colors['text_primary']
         )
         username.pack(anchor='w')
         
         privacy = tk.Label(
             user_info,
             text="🌐 Public",
-            font=('Segoe UI', 8),
-            bg='white',
-            fg='#65676B'
+            font=self.fonts['small'],
+            bg=self.colors['bg_secondary'],
+            fg=self.colors['text_secondary']
         )
         privacy.pack(anchor='w')
         
-        # Text input area
-        text_frame = tk.Frame(dialog, bg='white')
-        text_frame.pack(fill='both', expand=True, padx=15, pady=(0, 8))
+        # Text input area with border
+        text_container = tk.Frame(dialog, bg=self.colors['bg_primary'])
+        text_container.pack(fill='both', expand=True, padx=20, pady=(0, 12))
         
         text_input = scrolledtext.ScrolledText(
-            text_frame,
-            font=('Segoe UI', 11),
+            text_container,
+            font=self.fonts['body'],
             wrap='word',
             relief='flat',
-            bg='white',
-            fg='#050505',
-            insertbackground='#1877F2',
-            height=6
+            bg=self.colors['bg_primary'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['accent_primary'],
+            height=8,
+            borderwidth=0,
+            padx=12,
+            pady=12
         )
         text_input.pack(fill='both', expand=True)
         text_input.focus()
@@ -229,33 +287,51 @@ class SocialMediaApp:
         # Placeholder
         placeholder = "What's on your mind?"
         text_input.insert('1.0', placeholder)
-        text_input.config(fg='#65676B')
+        text_input.config(fg=self.colors['text_muted'])
         
         def on_focus_in(event):
             if text_input.get('1.0', 'end-1c') == placeholder:
                 text_input.delete('1.0', 'end')
-                text_input.config(fg='#050505')
+                text_input.config(fg=self.colors['text_primary'])
         
         def on_focus_out(event):
             if not text_input.get('1.0', 'end-1c').strip():
                 text_input.insert('1.0', placeholder)
-                text_input.config(fg='#65676B')
+                text_input.config(fg=self.colors['text_muted'])
+        
+        def submit_post(event=None):
+            """Submit post when Enter is pressed or Post button is clicked"""
+            self.create_post(text_input.get('1.0', 'end-1c'), dialog, placeholder)
+            return 'break'  # Prevent default Enter behavior
         
         text_input.bind('<FocusIn>', on_focus_in)
         text_input.bind('<FocusOut>', on_focus_out)
+        # Bind Enter key to submit post (Shift+Enter for new line)
+        text_input.bind('<Return>', submit_post)
         
-        # Post button
+        # Post button with hover effect
         post_btn = tk.Button(
             dialog,
             text="Post",
-            font=('Segoe UI', 11, 'bold'),
-            bg='#1877F2',
+            font=self.fonts['button'],
+            bg=self.colors['accent_primary'],
             fg='white',
             relief='flat',
             cursor='hand2',
-            command=lambda: self.create_post(text_input.get('1.0', 'end-1c'), dialog, placeholder)
+            borderwidth=0,
+            command=submit_post
         )
-        post_btn.pack(fill='x', padx=15, pady=(0, 15), ipady=6)
+        post_btn.pack(fill='x', padx=20, pady=(0, 20), ipady=12)
+        
+        # Hover effects
+        def btn_enter(e):
+            post_btn.config(bg=self.colors['accent_hover'])
+        
+        def btn_leave(e):
+            post_btn.config(bg=self.colors['accent_primary'])
+        
+        post_btn.bind('<Enter>', btn_enter)
+        post_btn.bind('<Leave>', btn_leave)
         
     def create_post(self, text, dialog, placeholder):
         """Process and create post after hate speech check"""
@@ -289,200 +365,313 @@ class SocialMediaApp:
             output = self.model(text_tensor, length_tensor)
             probability = torch.sigmoid(output).item()
         
-        threshold = 0.8
+        # Lower threshold for better detection (0.5 is more balanced)
+        threshold = 0.5
         is_hate = probability > threshold
+        
+        # Debug: print probability for testing
+        print(f"Text: '{text}' | Probability: {probability:.4f} | Threshold: {threshold} | Is hate: {is_hate}")
         
         return is_hate, probability
     
     def show_loading_screen(self, content):
-        """Show loading screen while analyzing content"""
+        """Show modern loading screen with progress bar"""
         loading = tk.Toplevel(self.root)
-        loading.title("Analyzing Post")
-        loading.geometry("350x200")
+        loading.title("Analyzing...")
         loading.configure(bg='white')
         loading.resizable(False, False)
         loading.transient(self.root)
         loading.grab_set()
         
-        # Center dialog
-        loading.update_idletasks()
-        x = (loading.winfo_screenwidth() // 2) - (loading.winfo_width() // 2)
-        y = (loading.winfo_screenheight() // 2) - (loading.winfo_height() // 2)
-        loading.geometry(f"+{x}+{y}")
+        # Content frame
+        content_frame = tk.Frame(loading, bg='white', padx=50, pady=40)
+        content_frame.pack()
         
-        # Loading animation
-        loading_label = tk.Label(
-            loading,
-            text="⏳",
-            font=('Segoe UI', 48),
+        # Shield icon
+        icon_label = tk.Label(
+            content_frame,
+            text="🛡️",
+            font=('Segoe UI', 60),
             bg='white'
         )
-        loading_label.pack(pady=(30, 10))
+        icon_label.pack(pady=(0, 20))
         
-        # Loading text
+        # Title
         text_label = tk.Label(
-            loading,
-            text="Analyzing your post...",
-            font=('Segoe UI', 12),
+            content_frame,
+            text="Analyzing content...",
+            font=('Segoe UI', 16, 'bold'),
             bg='white',
-            fg='#65676B'
+            fg='#1A1D29'
         )
-        text_label.pack(pady=5)
+        text_label.pack(pady=(0, 20))
         
-        status_label = tk.Label(
-            loading,
-            text="Checking for hate speech",
-            font=('Segoe UI', 10),
+        # Progress bar container with rounded corners
+        progress_container = tk.Frame(content_frame, bg='white')
+        progress_container.pack(pady=(0, 10))
+        
+        progress_bg = tk.Canvas(progress_container, bg='white', height=10, width=300, highlightthickness=0)
+        progress_bg.pack()
+        
+        # Draw rounded background
+        progress_bg.create_rectangle(0, 0, 300, 10, fill='#E5E7EB', outline='#E5E7EB', width=0)
+        
+        # Create rounded progress bar (will be updated)
+        progress_bar = progress_bg.create_rectangle(0, 0, 0, 10, fill='#5B7FFF', outline='#5B7FFF', width=0)
+        
+        # Percentage label
+        percent_label = tk.Label(
+            content_frame,
+            text="0%",
+            font=('Segoe UI', 11),
             bg='white',
-            fg='#1877F2'
+            fg='#6B7280'
         )
-        status_label.pack(pady=5)
+        percent_label.pack()
         
-        # Animate loading dots
-        def animate_dots(count=0):
-            dots = '.' * (count % 4)
-            status_label.config(text=f"Checking for hate speech{dots}")
-            if loading.winfo_exists():
-                loading.after(300, lambda: animate_dots(count + 1))
+        # Center dialog relative to main window
+        def center_dialog():
+            loading.update_idletasks()
+            self.root.update_idletasks()
+            
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            root_width = self.root.winfo_width()
+            root_height = self.root.winfo_height()
+            dialog_width = loading.winfo_width()
+            dialog_height = loading.winfo_height()
+            
+            x = root_x + (root_width - dialog_width) // 2
+            y = root_y + (root_height - dialog_height) // 2
+            
+            loading.geometry(f"+{x}+{y}")
+            loading.lift()
+            loading.focus_force()
         
-        animate_dots()
+        # Position after a brief delay to ensure proper layout
+        loading.after(10, center_dialog)
+        
+        # Animate progress bar with smooth easing
+        self.loading_cancelled = False
+        
+        def animate_progress(progress=0):
+            if loading.winfo_exists() and progress <= 100 and not self.loading_cancelled:
+                # Smooth easing function (ease-out)
+                eased_progress = 1 - (1 - progress / 100) ** 3
+                width = int(300 * eased_progress)
+                
+                # Update progress bar with smooth animation
+                progress_bg.coords(progress_bar, 0, 0, width, 10)
+                percent_label.config(text=f"{int(progress)}%")
+                # Faster animation - complete in ~1.5 seconds
+                loading.after(15, lambda: animate_progress(progress + 1))
+        
+        # Start animation immediately
+        loading.after(10, lambda: animate_progress(0))
         
         # Process after delay
         def process_content():
-            is_hate, probability = self.detect_hate_speech(content)
-            loading.destroy()
-            
-            if is_hate:
-                self.show_violation_dialog(probability)
-            else:
-                self.add_post_to_feed(content)
-                self.show_success_dialog(probability)
+            try:
+                is_hate, probability = self.detect_hate_speech(content)
+                self.loading_cancelled = True
+                
+                if loading.winfo_exists():
+                    loading.destroy()
+                
+                if is_hate:
+                    self.show_violation_dialog(probability)
+                else:
+                    self.add_post_to_feed(content)
+                    self.show_success_dialog(probability)
+            except Exception as e:
+                print(f"Error processing content: {e}")
+                self.loading_cancelled = True
+                if loading.winfo_exists():
+                    loading.destroy()
         
         # Simulate processing time (1.5 seconds)
         loading.after(1500, process_content)
     
     def show_violation_dialog(self, probability):
-        """Show hate speech violation dialog"""
+        """Show modern hate speech violation dialog"""
         violation = tk.Toplevel(self.root)
-        violation.title("Community Standards Violation")
-        violation.geometry("450x300")
+        violation.title("Content Blocked")
         violation.configure(bg='white')
         violation.resizable(False, False)
         violation.transient(self.root)
         violation.grab_set()
         
-        # Center dialog
-        violation.update_idletasks()
-        x = (violation.winfo_screenwidth() // 2) - (violation.winfo_width() // 2)
-        y = (violation.winfo_screenheight() // 2) - (violation.winfo_height() // 2)
-        violation.geometry(f"+{x}+{y}")
+        # Content frame
+        content = tk.Frame(violation, bg='white', padx=50, pady=40)
+        content.pack()
         
         # Warning icon
         icon_label = tk.Label(
-            violation,
+            content,
             text="⚠️",
-            font=('Segoe UI', 48),
+            font=('Segoe UI', 60),
             bg='white'
         )
-        icon_label.pack(pady=(30, 10))
+        icon_label.pack(pady=(0, 20))
         
         # Title
         title = tk.Label(
-            violation,
-            text="Post Blocked",
+            content,
+            text="Content Blocked",
             font=('Segoe UI', 18, 'bold'),
             bg='white',
-            fg='#D93025'
+            fg='#EF4444'
         )
-        title.pack(pady=5)
+        title.pack(pady=(0, 15))
         
         # Message
         message = tk.Label(
-            violation,
-            text=f"Your post goes against our Community Standards on hate speech.\n\n"
-                 f"We don't allow content that attacks people based on their\n"
-                 f"protected characteristics or promotes violence.\n\n"
-                 f"Detection Confidence: {probability*100:.1f}%",
-            font=('Segoe UI', 10),
+            content,
+            text=f"Your post violates our Community Standards on hate speech.\n\nWe don't allow content that attacks people based on their\nprotected characteristics or promotes violence.\n\nDetection Confidence: {probability*100:.1f}%",
+            font=('Segoe UI', 11),
             bg='white',
-            fg='#65676B',
+            fg='#6B7280',
             justify='center'
         )
-        message.pack(pady=10)
+        message.pack(pady=(0, 25))
         
         # OK button
         ok_btn = tk.Button(
-            violation,
+            content,
             text="I Understand",
-            font=('Segoe UI', 11, 'bold'),
-            bg='#1877F2',
+            font=('Segoe UI', 12, 'bold'),
+            bg='#EF4444',
             fg='white',
             relief='flat',
             cursor='hand2',
-            command=violation.destroy
+            borderwidth=0,
+            command=violation.destroy,
+            padx=40,
+            pady=12
         )
-        ok_btn.pack(pady=(20, 30), ipadx=30, ipady=5)
+        ok_btn.pack(ipady=8)
+        
+        def btn_enter(e):
+            ok_btn.config(bg='#DC2626')
+        
+        def btn_leave(e):
+            ok_btn.config(bg='#EF4444')
+        
+        ok_btn.bind('<Enter>', btn_enter)
+        ok_btn.bind('<Leave>', btn_leave)
+        
+        # Center dialog relative to main window
+        def center_dialog():
+            violation.update_idletasks()
+            self.root.update_idletasks()
+            
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            root_width = self.root.winfo_width()
+            root_height = self.root.winfo_height()
+            dialog_width = violation.winfo_width()
+            dialog_height = violation.winfo_height()
+            
+            x = root_x + (root_width - dialog_width) // 2
+            y = root_y + (root_height - dialog_height) // 2
+            
+            violation.geometry(f"+{x}+{y}")
+            violation.lift()
+            violation.focus_force()
+        
+        # Position after a brief delay
+        violation.after(50, center_dialog)
     
     def show_success_dialog(self, probability):
-        """Show successful post dialog"""
+        """Show modern successful post dialog"""
         success = tk.Toplevel(self.root)
         success.title("Post Published")
-        success.geometry("400x250")
         success.configure(bg='white')
         success.resizable(False, False)
         success.transient(self.root)
         success.grab_set()
         
-        # Center dialog
-        success.update_idletasks()
-        x = (success.winfo_screenwidth() // 2) - (success.winfo_width() // 2)
-        y = (success.winfo_screenheight() // 2) - (success.winfo_height() // 2)
-        success.geometry(f"+{x}+{y}")
+        # Content frame
+        content = tk.Frame(success, bg='white', padx=50, pady=40)
+        content.pack()
         
         # Success icon
         icon_label = tk.Label(
-            success,
+            content,
             text="✅",
-            font=('Segoe UI', 48),
+            font=('Segoe UI', 60),
             bg='white'
         )
-        icon_label.pack(pady=(30, 10))
+        icon_label.pack(pady=(0, 20))
         
         # Title
         title = tk.Label(
-            success,
-            text="Post Published Successfully!",
-            font=('Segoe UI', 16, 'bold'),
+            content,
+            text="Post Published!",
+            font=('Segoe UI', 18, 'bold'),
             bg='white',
-            fg='#00A400'
+            fg='#10B981'
         )
-        title.pack(pady=5)
+        title.pack(pady=(0, 15))
         
         # Message
         confidence = (1 - probability) * 100
         message = tk.Label(
-            success,
-            text=f"Your post is clean and safe for the community.\n\n"
-                 f"Safety Score: {confidence:.1f}%",
-            font=('Segoe UI', 10),
+            content,
+            text=f"Your post is clean and safe for the community.\n\nSafety Score: {confidence:.1f}%",
+            font=('Segoe UI', 12),
             bg='white',
-            fg='#65676B',
+            fg='#6B7280',
             justify='center'
         )
-        message.pack(pady=10)
+        message.pack(pady=(0, 25))
         
         # Close button
         close_btn = tk.Button(
-            success,
+            content,
             text="Close",
-            font=('Segoe UI', 11, 'bold'),
-            bg='#1877F2',
+            font=('Segoe UI', 12, 'bold'),
+            bg='#10B981',
             fg='white',
             relief='flat',
             cursor='hand2',
-            command=success.destroy
+            borderwidth=0,
+            command=success.destroy,
+            padx=50,
+            pady=12
         )
-        close_btn.pack(pady=(15, 30), ipadx=30, ipady=5)
+        close_btn.pack(ipady=8)
+        
+        def btn_enter(e):
+            close_btn.config(bg='#059669')
+        
+        def btn_leave(e):
+            close_btn.config(bg='#10B981')
+        
+        close_btn.bind('<Enter>', btn_enter)
+        close_btn.bind('<Leave>', btn_leave)
+        
+        # Center dialog relative to main window
+        def center_dialog():
+            success.update_idletasks()
+            self.root.update_idletasks()
+            
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            root_width = self.root.winfo_width()
+            root_height = self.root.winfo_height()
+            dialog_width = success.winfo_width()
+            dialog_height = success.winfo_height()
+            
+            x = root_x + (root_width - dialog_width) // 2
+            y = root_y + (root_height - dialog_height) // 2
+            
+            success.geometry(f"+{x}+{y}")
+            success.lift()
+            success.focus_force()
+        
+        # Position after a brief delay
+        success.after(50, center_dialog)
         
         # Auto close after 2 seconds
         success.after(2000, success.destroy)
@@ -491,16 +680,16 @@ class SocialMediaApp:
         """Add post to feed"""
         # Clear welcome message if first post
         if len(self.posts) == 0:
-            for widget in self.feed_frame.winfo_children():
+            for widget in self.feed_column.winfo_children():
                 widget.destroy()
         
         # Add to posts list
         timestamp = datetime.now()
         self.posts.insert(0, {'content': content, 'timestamp': timestamp})
         
-        # Create post card
-        post_frame = tk.Frame(self.feed_frame, bg='white', relief='solid', borderwidth=1)
-        post_frame.pack(fill='x', pady=5)
+        # Create post card inside the centered column
+        post_frame = tk.Frame(self.feed_column, bg='white', relief='solid', borderwidth=1)
+        post_frame.pack(fill='x', pady=8)
         
         # Post header
         header = tk.Frame(post_frame, bg='white')
@@ -544,7 +733,7 @@ class SocialMediaApp:
             bg='white',
             fg='#050505',
             justify='left',
-            wraplength=700,
+            wraplength=600,
             anchor='w'
         )
         content_label.pack(fill='x', padx=15, pady=(0, 15))
