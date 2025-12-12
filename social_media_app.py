@@ -149,7 +149,7 @@ class SocialMediaApp:
         """Open create post dialog (Facebook-style)"""
         dialog = tk.Toplevel(self.root)
         dialog.title("Create post")
-        dialog.geometry("500x400")
+        dialog.geometry("450x380")
         dialog.configure(bg='white')
         dialog.resizable(False, False)
         dialog.transient(self.root)
@@ -163,15 +163,15 @@ class SocialMediaApp:
         
         # Header
         header_frame = tk.Frame(dialog, bg='white')
-        header_frame.pack(fill='x', pady=(0, 10))
+        header_frame.pack(fill='x')
         
         title = tk.Label(
             header_frame,
             text="Create post",
-            font=('Segoe UI', 16, 'bold'),
+            font=('Segoe UI', 14, 'bold'),
             bg='white'
         )
-        title.pack(pady=15)
+        title.pack(pady=10)
         
         # Separator
         separator = tk.Frame(dialog, height=1, bg='#CED0D4')
@@ -179,23 +179,23 @@ class SocialMediaApp:
         
         # User info
         user_frame = tk.Frame(dialog, bg='white')
-        user_frame.pack(fill='x', pady=15, padx=20)
+        user_frame.pack(fill='x', pady=10, padx=15)
         
         user_icon = tk.Label(
             user_frame,
             text="👤",
-            font=('Segoe UI', 20),
+            font=('Segoe UI', 16),
             bg='white'
         )
-        user_icon.pack(side='left', padx=(0, 10))
+        user_icon.pack(side='left', padx=(0, 8))
         
         user_info = tk.Frame(user_frame, bg='white')
         user_info.pack(side='left')
         
         username = tk.Label(
             user_info,
-            text="Reliablesoft",
-            font=('Segoe UI', 11, 'bold'),
+            text="User",
+            font=('Segoe UI', 10, 'bold'),
             bg='white'
         )
         username.pack(anchor='w')
@@ -203,7 +203,7 @@ class SocialMediaApp:
         privacy = tk.Label(
             user_info,
             text="🌐 Public",
-            font=('Segoe UI', 9),
+            font=('Segoe UI', 8),
             bg='white',
             fg='#65676B'
         )
@@ -211,16 +211,17 @@ class SocialMediaApp:
         
         # Text input area
         text_frame = tk.Frame(dialog, bg='white')
-        text_frame.pack(fill='both', expand=True, padx=20, pady=(0, 10))
+        text_frame.pack(fill='both', expand=True, padx=15, pady=(0, 8))
         
         text_input = scrolledtext.ScrolledText(
             text_frame,
-            font=('Segoe UI', 12),
+            font=('Segoe UI', 11),
             wrap='word',
             relief='flat',
             bg='white',
             fg='#050505',
-            insertbackground='#1877F2'
+            insertbackground='#1877F2',
+            height=6
         )
         text_input.pack(fill='both', expand=True)
         text_input.focus()
@@ -243,46 +244,18 @@ class SocialMediaApp:
         text_input.bind('<FocusIn>', on_focus_in)
         text_input.bind('<FocusOut>', on_focus_out)
         
-        # Add to post section
-        add_frame = tk.Frame(dialog, bg='white', relief='solid', borderwidth=1)
-        add_frame.pack(fill='x', padx=20, pady=(0, 10))
-        
-        add_label = tk.Label(
-            add_frame,
-            text="Add to your post",
-            font=('Segoe UI', 10),
-            bg='white',
-            fg='#050505'
-        )
-        add_label.pack(side='left', padx=10, pady=10)
-        
-        # Icons
-        icons_frame = tk.Frame(add_frame, bg='white')
-        icons_frame.pack(side='right', padx=10, pady=10)
-        
-        for icon in ['🖼️', '👤', '😊', '📍', '🎬']:
-            icon_label = tk.Label(
-                icons_frame,
-                text=icon,
-                font=('Segoe UI', 14),
-                bg='white',
-                cursor='hand2'
-            )
-            icon_label.pack(side='left', padx=5)
-        
         # Post button
         post_btn = tk.Button(
             dialog,
             text="Post",
-            font=('Segoe UI', 12, 'bold'),
+            font=('Segoe UI', 11, 'bold'),
             bg='#1877F2',
             fg='white',
             relief='flat',
             cursor='hand2',
-            height=2,
             command=lambda: self.create_post(text_input.get('1.0', 'end-1c'), dialog, placeholder)
         )
-        post_btn.pack(fill='x', padx=20, pady=(0, 20), ipady=8)
+        post_btn.pack(fill='x', padx=15, pady=(0, 15), ipady=6)
         
     def create_post(self, text, dialog, placeholder):
         """Process and create post after hate speech check"""
@@ -294,17 +267,11 @@ class SocialMediaApp:
             messagebox.showwarning("Empty Post", "Please write something before posting.")
             return
         
-        # Check for hate speech
-        is_hate, probability = self.detect_hate_speech(content)
+        # Close the create post dialog
+        dialog.destroy()
         
-        if is_hate:
-            # Show violation dialog
-            self.show_violation_dialog(probability)
-        else:
-            # Post successfully
-            self.add_post_to_feed(content)
-            dialog.destroy()
-            self.show_success_dialog(probability)
+        # Show loading screen
+        self.show_loading_screen(content)
     
     def detect_hate_speech(self, text):
         """Detect hate speech in text"""
@@ -326,6 +293,73 @@ class SocialMediaApp:
         is_hate = probability > threshold
         
         return is_hate, probability
+    
+    def show_loading_screen(self, content):
+        """Show loading screen while analyzing content"""
+        loading = tk.Toplevel(self.root)
+        loading.title("Analyzing Post")
+        loading.geometry("350x200")
+        loading.configure(bg='white')
+        loading.resizable(False, False)
+        loading.transient(self.root)
+        loading.grab_set()
+        
+        # Center dialog
+        loading.update_idletasks()
+        x = (loading.winfo_screenwidth() // 2) - (loading.winfo_width() // 2)
+        y = (loading.winfo_screenheight() // 2) - (loading.winfo_height() // 2)
+        loading.geometry(f"+{x}+{y}")
+        
+        # Loading animation
+        loading_label = tk.Label(
+            loading,
+            text="⏳",
+            font=('Segoe UI', 48),
+            bg='white'
+        )
+        loading_label.pack(pady=(30, 10))
+        
+        # Loading text
+        text_label = tk.Label(
+            loading,
+            text="Analyzing your post...",
+            font=('Segoe UI', 12),
+            bg='white',
+            fg='#65676B'
+        )
+        text_label.pack(pady=5)
+        
+        status_label = tk.Label(
+            loading,
+            text="Checking for hate speech",
+            font=('Segoe UI', 10),
+            bg='white',
+            fg='#1877F2'
+        )
+        status_label.pack(pady=5)
+        
+        # Animate loading dots
+        def animate_dots(count=0):
+            dots = '.' * (count % 4)
+            status_label.config(text=f"Checking for hate speech{dots}")
+            if loading.winfo_exists():
+                loading.after(300, lambda: animate_dots(count + 1))
+        
+        animate_dots()
+        
+        # Process after delay
+        def process_content():
+            is_hate, probability = self.detect_hate_speech(content)
+            loading.destroy()
+            
+            if is_hate:
+                self.show_violation_dialog(probability)
+            else:
+                self.add_post_to_feed(content)
+                self.show_success_dialog(probability)
+        
+        # Simulate processing time (1.5 seconds)
+        loading.after(1500, process_content)
     
     def show_violation_dialog(self, probability):
         """Show hate speech violation dialog"""
@@ -485,7 +519,7 @@ class SocialMediaApp:
         
         username = tk.Label(
             user_info,
-            text="Reliablesoft",
+            text="User",
             font=('Segoe UI', 11, 'bold'),
             bg='white'
         )
